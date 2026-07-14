@@ -1,0 +1,26 @@
+export const LANGUAGES = [
+  'English',
+  'Malay',
+  'Indonesian',
+  'Chinese Simplified',
+  'Chinese Traditional',
+  'Japanese',
+  'Korean',
+  'Arabic',
+  'French',
+  'German',
+  'Spanish',
+  'Portuguese',
+  'Italian',
+  'Russian',
+  'Thai',
+  'Vietnamese',
+  'Hindi',
+  'Bengali',
+  'Turkish',
+  'Dutch',
+  'Polish',
+  'Ukrainian',
+] as const;
+
+export const SOURCE_LANGUAGES = ['auto', ...LANGUAGES] as const;

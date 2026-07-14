@@ -1,0 +1,42 @@
+:root {
+  color-scheme: light dark;
+  font:
+    13px/1.4 Inter,
+    system-ui,
+    sans-serif;
+}
+body {
+  margin: 0;
+  min-width: 280px;
+}
+main {
+  padding: 16px;
+}
+h1 {
+  font-size: 18px;
+  margin: 0;
+}
+p {
+  color: #667085;
+}
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px;
+  background: #5b46e8;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+button.secondary {
+  margin-top: 7px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #ccd1d8;
+}
+@media (prefers-color-scheme: dark) {
+  p {
+    color: #aeb4c0;
+  }
+}
