@@ -32,10 +32,10 @@ export function OptionsApp() {
       setStatus('Enter a valid backend URL.');
       return;
     }
-    if (
-      !pattern.startsWith('http://localhost') &&
-      !pattern.startsWith('http://127.0.0.1')
-    ) {
+    const alreadyAllowed = await chrome.permissions.contains({
+      origins: [pattern],
+    });
+    if (!alreadyAllowed) {
       const granted = await chrome.permissions.request({ origins: [pattern] });
       if (!granted) {
         setStatus('Permission to contact that backend was not granted.');

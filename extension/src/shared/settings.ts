@@ -1,7 +1,7 @@
 import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
-  backendUrl: 'http://localhost:8787',
+  backendUrl: 'https://penbot.mirabellier.com',
   sourceLanguage: 'auto',
   targetLanguage: 'English',
   dialect: 'none',

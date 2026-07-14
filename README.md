@@ -91,7 +91,7 @@ npm run dev:server
 npm run dev:extension
 ```
 
-The default backend URL in extension settings is `http://localhost:8787`. For a remote backend, enter its HTTPS origin in Settings. The browser will request optional host permission for that origin. Update `ALLOWED_ORIGINS` on the server to the installed extension origin, comma-separating multiple Chrome/Edge/Brave/Firefox development IDs when needed.
+The default backend URL in extension settings is `https://penbot.mirabellier.com`. For another backend, enter its HTTPS origin in Settings. The browser will request optional host permission for that origin. Update `ALLOWED_ORIGINS` on the server to the installed extension origin, comma-separating multiple Chrome/Edge/Brave/Firefox development IDs when needed.
 
 Build both deployables:
 

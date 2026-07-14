@@ -7,7 +7,11 @@ export default defineManifest({
   description:
     'Correct, rewrite, answer, and translate selected text with DeepSeek-V4-Flash.',
   permissions: ['storage', 'contextMenus', 'activeTab'],
-  host_permissions: ['http://localhost/*', 'http://127.0.0.1/*'],
+  host_permissions: [
+    'https://penbot.mirabellier.com/*',
+    'http://localhost/*',
+    'http://127.0.0.1/*',
+  ],
   optional_host_permissions: ['https://*/*', 'http://*/*'],
   background: { service_worker: 'src/background/index.ts', type: 'module' },
   action: { default_popup: 'popup.html', default_title: 'Penbot' },
