@@ -17,6 +17,7 @@ export function createApp(
       .map((origin) => origin.trim())
       .filter(Boolean),
   );
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(
