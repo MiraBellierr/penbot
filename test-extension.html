@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h1>Penbot test</h1>
+
+    <input
+      type="text"
+      value="i want ask if the event still available"
+      style="width: 500px"
+    />
+
+    <br /><br />
+
+    <h2>Twitch-style controlled textarea</h2>
+    <textarea data-a-target="chat-input" rows="8" cols="70">
+Hello John,
+
+i want ask if the event still available.
+
+Thank you.
+    </textarea>
+
+    <br /><br />
+
+    <h2>Discord-style nested rich editor</h2>
+    <div
+      contenteditable="true"
+      role="textbox"
+      data-slate-editor="true"
+      style="width: 500px; min-height: 100px; border: 1px solid; padding: 12px"
+    >
+      <span data-slate-node="text"
+        ><span data-slate-leaf="true"
+          >this are a editable message with grammar problem.</span
+        ></span
+      >
+    </div>
+  </body>
+</html>

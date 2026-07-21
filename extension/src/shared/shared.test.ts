@@ -19,7 +19,7 @@ describe('shared extension utilities', () => {
     });
   });
 
-  it('constructs the backend request without an API key', () => {
+  it('constructs the transform request', () => {
     const request = buildTransformRequest(
       'fluent',
       'hello',
@@ -36,7 +36,6 @@ describe('shared extension utilities', () => {
       variationSeed: 'seed',
       preferences: { dialect: 'none', customInstructions: '' },
     });
-    expect(JSON.stringify(request)).not.toContain('API_KEY');
   });
 
   it('validates normal and translation result formatting', () => {
@@ -60,6 +59,12 @@ describe('shared extension utilities', () => {
     expect(() =>
       parseTransformResponse({ success: true, data: { result: '' } }),
     ).toThrow();
+  });
+
+  it('accepts selection-frame routing messages', async () => {
+    const { isBackgroundMessage } = await import('./validation');
+    expect(isBackgroundMessage({ type: 'SELECTION_AVAILABLE' })).toBe(true);
+    expect(isBackgroundMessage({ type: 'OPEN_ACTIVE_SELECTION' })).toBe(true);
   });
 
   it('persists the target language preference', async () => {

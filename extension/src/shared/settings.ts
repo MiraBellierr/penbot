@@ -1,7 +1,9 @@
 import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
-  backendUrl: 'https://penbot.mirabellier.com',
+  deepseekApiKey: '',
+  deepseekModel: 'deepseek-v4-flash',
+  deepseekEnableThinking: false,
   sourceLanguage: 'auto',
   targetLanguage: 'English',
   dialect: 'none',

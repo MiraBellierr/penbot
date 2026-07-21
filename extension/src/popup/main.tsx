@@ -3,12 +3,7 @@ import './popup.css';
 
 function Popup() {
   const openToolbar = async () => {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    if (tab?.id)
-      await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_TOOLBAR' });
+    await chrome.runtime.sendMessage({ type: 'OPEN_ACTIVE_SELECTION' });
     window.close();
   };
   return (

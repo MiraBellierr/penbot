@@ -12,6 +12,11 @@ export function isBackgroundMessage(
   value: unknown,
 ): value is BackgroundMessage {
   if (!isRecord(value) || typeof value.type !== 'string') return false;
+  if (
+    value.type === 'SELECTION_AVAILABLE' ||
+    value.type === 'OPEN_ACTIVE_SELECTION'
+  )
+    return true;
   if (value.type === 'OPEN_TOOLBAR') {
     return (
       value.action === undefined ||
@@ -34,7 +39,7 @@ export function isBackgroundMessage(
 
 export function parseTransformResponse(value: unknown): TransformResponse {
   if (!isRecord(value) || typeof value.success !== 'boolean')
-    throw new Error('The backend returned an invalid response.');
+    throw new Error('DeepSeek returned an invalid response.');
   if (!value.success) {
     const error = value.error;
     if (
@@ -42,7 +47,7 @@ export function parseTransformResponse(value: unknown): TransformResponse {
       typeof error.code !== 'string' ||
       typeof error.message !== 'string'
     ) {
-      throw new Error('The backend returned an invalid error response.');
+      throw new Error('DeepSeek returned an invalid error response.');
     }
     return {
       success: false,
@@ -55,7 +60,7 @@ export function parseTransformResponse(value: unknown): TransformResponse {
     typeof data.result !== 'string' ||
     data.result.trim().length === 0
   ) {
-    throw new Error('The backend returned an empty or invalid result.');
+    throw new Error('DeepSeek returned an empty or invalid result.');
   }
   const result = { result: data.result } as {
     result: string;
@@ -70,7 +75,7 @@ export function parseTransformResponse(value: unknown): TransformResponse {
   ] as const) {
     const candidate = data[key];
     if (candidate !== undefined && typeof candidate !== 'string')
-      throw new Error(`Invalid ${key} in backend response.`);
+      throw new Error(`Invalid ${key} in response.`);
     if (typeof candidate === 'string') result[key] = candidate;
   }
   return { success: true, data: result };

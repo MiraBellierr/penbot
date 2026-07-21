@@ -3,16 +3,8 @@ import {
   dispatchInputEvents,
 } from './NativeEventDispatcher';
 import type { SelectionAdapter, SelectionSnapshot } from './SelectionAdapter';
+import { findContentEditableRoot } from './editableElements';
 import { isRestrictedField } from './restrictions';
-
-function editableRoot(node: Node): HTMLElement | null {
-  const element = node instanceof Element ? node : node.parentElement;
-  if (!element) return null;
-  const editable = element.closest(
-    '[contenteditable="true"], [contenteditable="plaintext-only"]',
-  );
-  return editable instanceof HTMLElement ? editable : null;
-}
 
 export class ContentEditableSelectionAdapter implements SelectionAdapter {
   capture(): SelectionSnapshot | null {
@@ -20,7 +12,7 @@ export class ContentEditableSelectionAdapter implements SelectionAdapter {
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed)
       return null;
     const range = selection.getRangeAt(0);
-    const root = editableRoot(range.commonAncestorContainer);
+    const root = findContentEditableRoot(range.commonAncestorContainer);
     if (
       !root ||
       isRestrictedField(root) ||
@@ -31,26 +23,39 @@ export class ContentEditableSelectionAdapter implements SelectionAdapter {
     const savedRange = range.cloneRange();
     const text = savedRange.toString();
     if (!text) return null;
-    const rect = savedRange.getBoundingClientRect();
 
     const valid = (): boolean =>
       root.isConnected &&
       savedRange.toString() === text &&
       root.contains(savedRange.commonAncestorContainer);
-    const selectRange = (): boolean => {
+    const select = (targetRange: Range): boolean => {
       if (!valid()) return false;
       const current = document.getSelection();
       if (!current) return false;
       current.removeAllRanges();
-      current.addRange(savedRange);
+      current.addRange(targetRange);
       return true;
     };
+    const selectRange = (): boolean => select(savedRange);
     const replaceRange = (replacement: string, insert: boolean): boolean => {
-      if (!selectRange()) return false;
       const working = savedRange.cloneRange();
       if (insert) working.collapse(false);
+      if (!select(working)) return false;
       const inputType = insert ? 'insertText' : 'insertReplacementText';
-      if (!dispatchBeforeInput(root, replacement, inputType)) return false;
+      if (typeof document.execCommand === 'function') {
+        try {
+          if (document.execCommand('insertText', false, replacement)) {
+            root.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+        } catch {
+          // Some editors disable execCommand; the guarded DOM path below remains available.
+        }
+        if (!select(working)) return false;
+      }
+      const contentBeforeEvent = root.textContent;
+      if (!dispatchBeforeInput(root, replacement, inputType))
+        return root.textContent !== contentBeforeEvent;
       working.deleteContents();
       const textNode = document.createTextNode(replacement);
       working.insertNode(textNode);
@@ -65,7 +70,9 @@ export class ContentEditableSelectionAdapter implements SelectionAdapter {
     };
     return {
       text,
-      rect,
+      get rect() {
+        return savedRange.getBoundingClientRect();
+      },
       element: root,
       isStillValid: valid,
       replace: (replacement) => replaceRange(replacement, false),

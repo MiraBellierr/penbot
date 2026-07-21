@@ -5,25 +5,46 @@ import { CONTENT_STYLES } from './styles';
 import { getSettings } from '../shared/settings';
 import { isBackgroundMessage } from '../shared/validation';
 import type { TextAction } from '../shared/types';
+import { findEditableTarget } from './selection/editableElements';
+import { shouldOpenForSelectionKey } from './selection/selectionKeys';
 
 const manager = new SelectionManager();
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
-let lastTarget: EventTarget | null = null;
+let lastEditableTarget: EventTarget | null = null;
+let lastSnapshot: ReturnType<SelectionManager['capture']>;
 
-function close(): void {
+function isExtensionEvent(event: Event): boolean {
+  return Boolean(host && event.composedPath().includes(host));
+}
+
+function unmount(): void {
   root?.unmount();
   host?.remove();
   root = undefined;
   host = undefined;
 }
 
+function close(): void {
+  unmount();
+  lastSnapshot = null;
+}
+
 async function open(action?: TextAction, automatic = false): Promise<void> {
   const settings = await getSettings();
+  const captured = manager.capture(
+    lastEditableTarget ?? document.activeElement,
+  );
+  if (captured && captured.text.length <= settings.maxSelectionLength)
+    lastSnapshot = captured;
+  if (captured)
+    void chrome.runtime.sendMessage({ type: 'SELECTION_AVAILABLE' });
   if (automatic && !settings.autoShow) return;
-  const snapshot = manager.capture(lastTarget ?? document.activeElement);
+  const snapshot =
+    captured ?? (lastSnapshot?.isStillValid() ? lastSnapshot : null);
   if (!snapshot || snapshot.text.length > settings.maxSelectionLength) return;
-  close();
+  unmount();
+  lastSnapshot = snapshot;
   host = document.createElement('div');
   host.id = 'penbot-extension-root';
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -37,6 +58,7 @@ async function open(action?: TextAction, automatic = false): Promise<void> {
     <FloatingAssistant
       snapshot={snapshot}
       initialAction={action}
+      collapsedInitially={automatic}
       onClose={close}
     />,
   );
@@ -45,14 +67,18 @@ async function open(action?: TextAction, automatic = false): Promise<void> {
 document.addEventListener(
   'pointerdown',
   (event) => {
-    lastTarget = event.target;
+    if (isExtensionEvent(event)) return;
+    const target = findEditableTarget(event.target);
+    if (target) lastEditableTarget = target;
   },
   true,
 );
 document.addEventListener(
   'mouseup',
   (event) => {
-    lastTarget = event.target;
+    if (isExtensionEvent(event)) return;
+    const target = findEditableTarget(event.target);
+    if (target) lastEditableTarget = target;
     queueMicrotask(() => {
       void open(undefined, true);
     });
@@ -62,8 +88,10 @@ document.addEventListener(
 document.addEventListener(
   'keyup',
   (event) => {
-    lastTarget = event.target;
-    if (event.key.startsWith('Arrow') || event.key === 'Shift')
+    if (isExtensionEvent(event)) return;
+    const target = findEditableTarget(event.target);
+    if (target) lastEditableTarget = target;
+    if (shouldOpenForSelectionKey(event))
       queueMicrotask(() => {
         void open(undefined, true);
       });

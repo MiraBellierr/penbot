@@ -26,8 +26,7 @@ export function handleContextMenu(
   tab?: chrome.tabs.Tab,
 ): void {
   if (!tab?.id || !MENUS.some(([id]) => id === info.menuItemId)) return;
-  void chrome.tabs.sendMessage(tab.id, {
-    type: 'OPEN_TOOLBAR',
-    action: info.menuItemId,
-  });
+  const message = { type: 'OPEN_TOOLBAR', action: info.menuItemId };
+  if (info.frameId === undefined) void chrome.tabs.sendMessage(tab.id, message);
+  else void chrome.tabs.sendMessage(tab.id, message, { frameId: info.frameId });
 }

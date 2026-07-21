@@ -1,9 +1,7 @@
 import { handleContextMenu, registerContextMenus } from './contextMenu';
 import { getSettings } from '../shared/settings';
-import {
-  isBackgroundMessage,
-  parseTransformResponse,
-} from '../shared/validation';
+import { isBackgroundMessage } from '../shared/validation';
+import { callDeepSeek } from '../shared/deepseek';
 import type { TransformResponse } from '../shared/types';
 
 const activeRequests = new Map<string, AbortController>();
@@ -45,10 +43,24 @@ chrome.commands.onCommand.addListener((command) => {
   void openSelectionInActiveTab();
 });
 
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
+
 async function transform(
   message: Extract<ReturnType<typeof normalizeMessage>, { type: 'TRANSFORM' }>,
 ): Promise<TransformResponse> {
   const settings = await getSettings();
+
+  if (!settings.deepseekApiKey.trim()) {
+    return {
+      success: false,
+      error: {
+        code: 'MISSING_API_KEY',
+        message:
+          'No DeepSeek API key configured. Add your key in extension settings.',
+      },
+    };
+  }
+
   const controller = new AbortController();
   activeRequests.get(message.requestId)?.abort();
   activeRequests.set(message.requestId, controller);
@@ -57,33 +69,13 @@ async function transform(
     settings.requestTimeoutMs,
   );
   try {
-    const response = await fetch(
-      `${settings.backendUrl.replace(/\/$/, '')}/api/transform`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(message.request),
-        signal: controller.signal,
-      },
-    );
-    if (!response.ok) {
-      const body: unknown = await response.json().catch(() => null);
-      if (body !== null && typeof body === 'object') {
-        const parsed = parseTransformResponse(body);
-        if (!parsed.success) return parsed;
-        throw new Error('The backend returned an invalid status.');
-      }
-      throw new Error(
-        `The backend returned an error (HTTP ${response.status}).`,
-      );
-    }
-    const body: unknown = await response.json().catch(() => null);
-    if (body === null)
-      throw new Error('The backend returned a non-JSON response.');
-    return parseTransformResponse(body);
+    return await callDeepSeek(message.request, {
+      apiKey: settings.deepseekApiKey,
+      baseUrl: DEEPSEEK_BASE_URL,
+      model: settings.deepseekModel,
+      enableThinking: settings.deepseekEnableThinking,
+      signal: controller.signal,
+    });
   } catch (cause) {
     const timedOut = controller.signal.aborted;
     return {

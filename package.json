@@ -4,19 +4,17 @@
   "type": "module",
   "version": "1.0.0",
   "workspaces": [
-    "extension",
-    "server"
+    "extension"
   ],
   "scripts": {
-    "build": "npm run build -w server && npm run build -w extension",
+    "build": "npm run build -w extension",
     "dev:extension": "npm run dev -w extension",
-    "dev:server": "npm run dev -w server",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w extension",
+    "typecheck": "npm run typecheck -w extension",
     "test": "vitest run",
-    "test:integration": "vitest run server/test/app.test.ts extension/src/content/selection/selection.test.ts"
+    "test:integration": "vitest run extension/src/content/selection/selection.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

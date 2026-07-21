@@ -12,7 +12,9 @@ export type Dialect = 'american' | 'british' | 'australian' | 'none';
 export type Theme = 'system' | 'light' | 'dark';
 
 export interface Settings {
-  backendUrl: string;
+  deepseekApiKey: string;
+  deepseekModel: string;
+  deepseekEnableThinking: boolean;
   sourceLanguage: string;
   targetLanguage: string;
   dialect: Dialect;
@@ -42,6 +44,8 @@ export interface TransformResult {
 export type BackgroundMessage =
   | { type: 'TRANSFORM'; requestId: string; request: TransformRequest }
   | { type: 'CANCEL_TRANSFORM'; requestId: string }
+  | { type: 'SELECTION_AVAILABLE' }
+  | { type: 'OPEN_ACTIVE_SELECTION' }
   | { type: 'OPEN_TOOLBAR'; action?: TextAction };
 
 export type TransformResponse =

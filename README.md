@@ -1,6 +1,6 @@
 # Penbot
 
-Penbot is a Manifest V3 browser extension that transforms only text a user explicitly selects inside an editable field. It provides Grammar, Standard, Fluent, Formal, Answer, and Translate actions through a compact Shadow DOM toolbar. All AI work is performed by a separate Node.js backend using DeepSeek-V4-Flash; the DeepSeek API key never enters the extension bundle.
+Penbot is a Manifest V3 browser extension that transforms only text a user explicitly selects inside an editable field. It provides Grammar, Standard, Fluent, Formal, Answer, and Translate actions through a compact Shadow DOM toolbar. AI work uses the DeepSeek API directly from the extension background worker with the API key stored in extension settings.
 
 ## Features
 
@@ -14,7 +14,7 @@ Penbot is a Manifest V3 browser extension that transforms only text a user expli
 - Automatic toolbar, context-menu actions, and `Alt+Shift+P` command
 - Searchable language inputs and persisted target-language preference
 - System/light/dark themes and a responsive, style-isolated UI
-- Safe cancellation, request timeout, rate limiting, CORS allowlisting, and validated request/response envelopes
+- Safe cancellation, request timeout, and validated request/response envelopes
 
 ## Screenshots
 
@@ -33,24 +33,16 @@ Editable selection
   -> isolated React toolbar/preview
   -> validated runtime message
   -> MV3 background service worker
-  -> POST {BACKEND_URL}/api/transform
-  -> Express validation/rate limit/timeout layer
-  -> TransformPromptBuilder
-  -> DeepSeekService (OpenAI-compatible SDK)
+  -> DeepSeek API directly
   -> https://api.deepseek.com/chat/completions
 ```
 
-The content script retains a live selection snapshot only in page memory. It sends the selected string and chosen options to the background worker only after the user chooses an action. The worker calls the configured backend. The backend validates the request, constructs a hardened prompt, calls `deepseek-v4-flash`, validates the output, and returns plain text/structured translation fields. Generated content is assigned through React text values or DOM text nodes—never `innerHTML`.
-
-The extension and server are separate npm workspaces:
+The extension is an npm workspace:
 
 - `extension/src/content`: selection adapters and Shadow DOM React interface
-- `extension/src/background`: context menus, command handling, backend transport, timeout/cancellation
+- `extension/src/background`: context menus, command handling, DeepSeek transport, timeout/cancellation
 - `extension/src/options` and `extension/src/popup`: settings and browser-action surfaces
 - `extension/src/shared`: settings, language data, message validation, request construction, positioning
-- `server/src/services`: DeepSeek transport and central prompt construction
-- `server/src/schemas`: Zod input and translation-output validation
-- `server/src/controllers`, `routes`, and `middleware`: HTTP boundary and operational controls
 
 ## Prerequisites and installation
 
@@ -62,49 +54,23 @@ The extension and server are separate npm workspaces:
 npm install
 ```
 
-Create an API key in the DeepSeek platform console under API Keys. Copy the environment template into the server workspace and replace only the placeholder value:
-
-```powershell
-Copy-Item .env.example server/.env
-```
-
-```env
-DEEPSEEK_API_KEY=your_deepseek_api_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-v4-flash
-DEEPSEEK_ENABLE_THINKING_FOR_ANSWERS=false
-PORT=8787
-ALLOWED_ORIGINS=chrome-extension://YOUR_EXTENSION_ID
-REQUEST_TIMEOUT_MS=30000
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX=60
-```
-
-The model setting is configurable for deployment, but this project deliberately defaults to and presents `deepseek-v4-flash`. Deprecated DeepSeek model names are not used.
+Create an API key in the DeepSeek platform console under API Keys. Enter it in the extension options page (right-click the extension icon → Options).
 
 ## Development
 
-Start the backend and extension watcher in separate terminals:
+Start the extension dev server:
 
 ```bash
-npm run dev:server
 npm run dev:extension
 ```
 
-The default backend URL in extension settings is `https://penbot.mirabellier.com`. For another backend, enter its HTTPS origin in Settings. The browser will request optional host permission for that origin. Update `ALLOWED_ORIGINS` on the server to the installed extension origin, comma-separating multiple Chrome/Edge/Brave/Firefox development IDs when needed.
-
-Build both deployables:
+Build:
 
 ```bash
 npm run build
 ```
 
-Outputs:
-
-- `extension/dist`: unpacked browser extension
-- `server/dist`: compiled backend
-
-Run the compiled server with `npm run start -w server`.
+Output: `extension/dist` — unpacked browser extension.
 
 ## Loading the extension
 
@@ -113,34 +79,34 @@ Run the compiled server with `npm run start -w server`.
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
 3. Choose **Load unpacked** and select `extension/dist`.
-4. Copy the extension ID into the backend `ALLOWED_ORIGINS` value as `chrome-extension://ID`, restart the backend, and save the backend URL in Penbot Settings.
+4. Enter your DeepSeek API key in extension options.
 
 ### Edge
 
-Open `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/dist`. Edge uses a `chrome-extension://` origin for the CORS allowlist.
+Open `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/dist`.
 
 ### Brave
 
-Open `brave://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/dist`. Brave also uses a `chrome-extension://` origin.
+Open `brave://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/dist`.
 
 ### Firefox
 
-Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `extension/dist/manifest.json`. Add the displayed `moz-extension://` origin to `ALLOWED_ORIGINS`. Temporary add-ons are removed when Firefox restarts; signed distribution is required for permanent normal installation.
+Open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `extension/dist/manifest.json`.
 
 ## DeepSeek integration
 
-The backend uses the `openai` Node SDK solely as the transport for DeepSeek's OpenAI-compatible Chat Completions API:
+The extension calls DeepSeek's OpenAI-compatible Chat Completions API directly from the background worker:
 
 ```text
 POST https://api.deepseek.com/chat/completions
 model: deepseek-v4-flash
 ```
 
-Thinking is explicitly disabled for every normal request to reduce latency. Setting `DEEPSEEK_ENABLE_THINKING_FOR_ANSWERS=true` enables it only for Answer requests with high reasoning effort. Even then, the backend returns only final `message.content`; reasoning content is neither read nor exposed.
+Thinking is explicitly disabled for every normal request to reduce latency. It can be enabled in settings for Answer requests. Only the final `message.content` is used; reasoning content is neither read nor exposed.
 
-Translation requests use JSON response mode. The parsed object must exactly match the translation Zod schema before it can reach the browser. All other responses must be non-empty strings.
+Translation requests use JSON response mode. All other responses must be non-empty strings.
 
-Never place `DEEPSEEK_API_KEY` in `manifest.ts`, Vite environment variables, extension storage, frontend code, or a browser request. Browser extensions are distributed client code and cannot keep secrets. In production, terminate HTTPS at a reverse proxy, restrict CORS to known extension origins, retain rate limits, and add deployment-level client authentication if the backend is not otherwise private.
+Store your API key in extension settings only.
 
 ## Quality checks and testing
 
@@ -153,16 +119,7 @@ npm run test:integration
 npm run build
 ```
 
-Tests mock the DeepSeek transport and never make paid calls. They cover provider settings, thinking modes, every prompt, injection resistance, translation parsing, empty/invalid output, cancellation, rate limiting, request validation, exact selection replacement, rich-text formatting preservation, multiline content, selection restoration, Answer insertion, native event dispatch, storage, regeneration history, response validation, restricted fields, and popup positioning.
-
-An intentionally skipped live DeepSeek check can be enabled explicitly (this makes a paid API request):
-
-```powershell
-$env:RUN_DEEPSEEK_INTEGRATION_TESTS='true'
-npm test -- server/test/deepseek.integration.test.ts
-```
-
-It uses environment configuration and calls DeepSeek only when explicitly enabled. The normal unit and integration suites remain fully mocked.
+Tests mock the DeepSeek transport and never make paid calls.
 
 ## How replacement works
 
@@ -184,9 +141,9 @@ The default is `Alt+Shift+P`. Change it at:
 - No transformation runs until the user chooses an action.
 - Password, payment-card, security-code, and one-time-code fields are rejected.
 - Live DOM nodes and selections stay in page memory and are never written to browser storage.
-- Runtime messages are accepted only from this extension and validated at both browser and server boundaries.
+- Runtime messages are accepted only from this extension.
 - AI output is treated as plain text, and selected text is delimited as untrusted prompt content.
-- The server does not log full selected text, generated private text, authorization headers, upstream responses, or keys.
+- The extension does not log full selected text, generated private text, authorization headers, upstream responses, or keys.
 - Errors omit upstream bodies, stack traces, prompts, and credentials.
 
 ## Known limitations
@@ -200,4 +157,4 @@ The default is `Alt+Shift+P`. Change it at:
 
 ## Browser compatibility
 
-The source uses standard Manifest V3 APIs available in current Chrome, Edge, and Brave, plus the compatible `chrome` namespace exposed by current Firefox. Optional host permissions are requested only for a user-configured remote backend. Always test store builds against each target browser's current manifest validator before publishing.
+The source uses standard Manifest V3 APIs available in current Chrome, Edge, and Brave, plus the compatible `chrome` namespace exposed by current Firefox. Always test store builds against each target browser's current manifest validator before publishing.

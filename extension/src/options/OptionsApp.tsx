@@ -8,15 +8,6 @@ import {
 import type { Settings } from '../shared/types';
 import './options.css';
 
-function originPattern(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.origin}/*`;
-  } catch {
-    return null;
-  }
-}
-
 export function OptionsApp() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [status, setStatus] = useState('');
@@ -27,20 +18,9 @@ export function OptionsApp() {
     setSettings((current) => ({ ...current, [key]: value }));
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const pattern = originPattern(settings.backendUrl);
-    if (!pattern) {
-      setStatus('Enter a valid backend URL.');
+    if (!settings.deepseekApiKey.trim()) {
+      setStatus('Enter your DeepSeek API key.');
       return;
-    }
-    const alreadyAllowed = await chrome.permissions.contains({
-      origins: [pattern],
-    });
-    if (!alreadyAllowed) {
-      const granted = await chrome.permissions.request({ origins: [pattern] });
-      if (!granted) {
-        setStatus('Permission to contact that backend was not granted.');
-        return;
-      }
     }
     await saveSettings(settings);
     setStatus('Settings saved.');
@@ -50,28 +30,59 @@ export function OptionsApp() {
       <header>
         <div>
           <h1>Penbot settings</h1>
-          <p>Configure the secure backend used by the extension.</p>
+          <p>Configure your DeepSeek API connection.</p>
         </div>
         <div className="provider">
           <strong>AI provider: DeepSeek</strong>
-          <span>AI model: DeepSeek-V4-Flash</span>
+          <span>API calls go directly from your browser to DeepSeek</span>
         </div>
       </header>
       <form onSubmit={(event) => void submit(event)}>
         <section>
           <h2>Connection</h2>
           <label>
-            Backend API URL
+            DeepSeek API key
             <input
-              type="url"
+              type="password"
               required
-              value={settings.backendUrl}
-              onChange={(event) => update('backendUrl', event.target.value)}
+              placeholder="sk-..."
+              value={settings.deepseekApiKey}
+              onChange={(event) =>
+                update('deepseekApiKey', event.target.value)
+              }
             />
             <small>
-              The browser sends selected text to this server; the server stores
-              the DeepSeek key.
+              Get your key at{' '}
+              <a
+                href="https://platform.deepseek.com/api_keys"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                platform.deepseek.com
+              </a>
+              . Stored locally in your browser only.
             </small>
+          </label>
+          <label>
+            Model
+            <input
+              type="text"
+              required
+              value={settings.deepseekModel}
+              onChange={(event) =>
+                update('deepseekModel', event.target.value)
+              }
+            />
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={settings.deepseekEnableThinking}
+              onChange={(event) =>
+                update('deepseekEnableThinking', event.target.checked)
+              }
+            />{' '}
+            Enable thinking mode for Answer actions (uses more tokens)
           </label>
           <label>
             Request timeout (milliseconds)

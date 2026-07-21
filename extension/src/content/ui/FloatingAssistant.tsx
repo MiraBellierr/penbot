@@ -24,6 +24,7 @@ const LABELS: Record<TextAction, string> = {
 interface Props {
   snapshot: SelectionSnapshot;
   initialAction?: TextAction | undefined;
+  collapsedInitially?: boolean;
   onClose: () => void;
 }
 
@@ -31,11 +32,17 @@ function newSeed(): string {
   return crypto.randomUUID();
 }
 
-export function FloatingAssistant({ snapshot, initialAction, onClose }: Props) {
+export function FloatingAssistant({
+  snapshot,
+  initialAction,
+  collapsedInitially = false,
+  onClose,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const activeRequest = useRef<string | undefined>(undefined);
   const initialActionRequested = useRef(false);
   const [settings, setSettings] = useState<Settings>();
+  const [menuOpen, setMenuOpen] = useState(!collapsedInitially);
   const [action, setAction] = useState<TextAction | undefined>(initialAction);
   const [history, setHistory] = useState<TransformResult[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -78,7 +85,14 @@ export function FloatingAssistant({ snapshot, initialAction, onClose }: Props) {
       if (event.key === 'Escape') close();
     };
     const onPointer = (event: PointerEvent) => {
-      if (panelRef.current && !event.composedPath().includes(panelRef.current))
+      if (!panelRef.current) return;
+      const root = panelRef.current.getRootNode();
+      const shadowHost = root instanceof ShadowRoot ? root.host : null;
+      const path = event.composedPath();
+      if (
+        !path.includes(panelRef.current) &&
+        (!shadowHost || !path.includes(shadowHost))
+      )
         close();
     };
     document.addEventListener('keydown', onKey, true);
@@ -105,7 +119,7 @@ export function FloatingAssistant({ snapshot, initialAction, onClose }: Props) {
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
     };
-  }, [snapshot.rect, action, loading, historyIndex]);
+  }, [snapshot, action, loading, historyIndex, menuOpen]);
 
   const request = useCallback(
     async (selectedAction: TextAction, regenerate = false) => {
@@ -237,17 +251,29 @@ export function FloatingAssistant({ snapshot, initialAction, onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="penbot"
+      className={`penbot${!action && !menuOpen ? ' launcher-shell' : ''}`}
       data-theme={settings?.theme ?? 'system'}
       style={{ left: position.left, top: position.top }}
       role="dialog"
       aria-label="Penbot writing assistant"
     >
-      {!action ? (
+      {!action && !menuOpen ? (
+        <button
+          className="launcher"
+          type="button"
+          aria-label="Open Penbot actions"
+          title="Open Penbot actions"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => setMenuOpen(true)}
+        >
+          <span aria-hidden="true">✦</span>
+        </button>
+      ) : !action ? (
         <div
           className="toolbar"
           role="toolbar"
           aria-label="Text actions"
+          onPointerDown={(event) => event.preventDefault()}
           onKeyDown={onToolbarKeyDown}
         >
           {ACTIONS.map((item) => (
@@ -278,7 +304,7 @@ export function FloatingAssistant({ snapshot, initialAction, onClose }: Props) {
             </button>
           </header>
           <p className="privacy-note">
-            Only the selected text is sent to your configured backend.
+            Only the selected text is sent to DeepSeek.
           </p>
           <label className="original">
             <span>Original</span>

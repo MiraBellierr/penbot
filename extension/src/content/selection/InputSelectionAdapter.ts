@@ -1,5 +1,6 @@
 import type { SelectionAdapter, SelectionSnapshot } from './SelectionAdapter';
 import { isRestrictedField } from './restrictions';
+import { getTextControlSelectionRect } from './TextControlSelectionRect';
 
 type TextControl = HTMLInputElement | HTMLTextAreaElement;
 
@@ -36,7 +37,6 @@ export class InputSelectionAdapter implements SelectionAdapter {
     if (start === null || end === null || start === end) return null;
     const originalValue = target.value;
     const text = originalValue.slice(start, end);
-    const rect = target.getBoundingClientRect();
 
     const valid = (): boolean =>
       target.isConnected &&
@@ -82,7 +82,9 @@ export class InputSelectionAdapter implements SelectionAdapter {
 
     return {
       text,
-      rect,
+      get rect() {
+        return getTextControlSelectionRect(target, start, end);
+      },
       element: target,
       isStillValid: valid,
       replace: (replacement) => mutate(replacement, false),
