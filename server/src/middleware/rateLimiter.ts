@@ -7,6 +7,7 @@ export function createRateLimiter(environment: Environment) {
     limit: environment.RATE_LIMIT_MAX,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     message: {
       success: false,
       error: {
