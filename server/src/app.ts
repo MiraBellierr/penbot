@@ -40,6 +40,12 @@ export function createApp(
     createRateLimiter(environment),
     createTransformRouter(service, environment),
   );
+  app.use((_request, response) => {
+    response.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Route not found.' },
+    });
+  });
   app.use(errorHandler);
   return app;
 }
